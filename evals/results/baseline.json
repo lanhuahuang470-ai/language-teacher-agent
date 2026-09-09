@@ -1,0 +1,557 @@
+{
+  "mode": "exact-match",
+  "dataset_status": "synthetic seed; human review pending",
+  "scope": "isolated grading, no history retrieval",
+  "model": null,
+  "prompt_sha256": null,
+  "case_count": 60,
+  "valid_output_rate": 1.0,
+  "correctness_accuracy": 0.8333333333333334,
+  "score_mae_valid_only": 0.25,
+  "latency_p50_ms": 0.0012000018614344299,
+  "latency_p95_ms": 0.0021999985619913787,
+  "results": [
+    {
+      "id": "01-1",
+      "valid": true,
+      "correct": true,
+      "score": 1.0,
+      "expected_correct": true,
+      "expected_score": 1.0,
+      "elapsed_ms": 0.007399998139590025
+    },
+    {
+      "id": "01-2",
+      "valid": true,
+      "correct": false,
+      "score": 0.0,
+      "expected_correct": true,
+      "expected_score": 1.0,
+      "elapsed_ms": 0.0021999985619913787
+    },
+    {
+      "id": "01-3",
+      "valid": true,
+      "correct": false,
+      "score": 0.0,
+      "expected_correct": false,
+      "expected_score": 0.0,
+      "elapsed_ms": 0.0013000026228837669
+    },
+    {
+      "id": "01-4",
+      "valid": true,
+      "correct": false,
+      "score": 0.0,
+      "expected_correct": false,
+      "expected_score": 0.0,
+      "elapsed_ms": 0.0016999983927235007
+    },
+    {
+      "id": "01-5",
+      "valid": true,
+      "correct": false,
+      "score": 0.0,
+      "expected_correct": false,
+      "expected_score": 0.0,
+      "elapsed_ms": 0.0018999999156221747
+    },
+    {
+      "id": "01-6",
+      "valid": true,
+      "correct": false,
+      "score": 0.0,
+      "expected_correct": false,
+      "expected_score": 0.5,
+      "elapsed_ms": 0.0015000005078036338
+    },
+    {
+      "id": "02-1",
+      "valid": true,
+      "correct": true,
+      "score": 1.0,
+      "expected_correct": true,
+      "expected_score": 1.0,
+      "elapsed_ms": 0.0015000005078036338
+    },
+    {
+      "id": "02-2",
+      "valid": true,
+      "correct": false,
+      "score": 0.0,
+      "expected_correct": true,
+      "expected_score": 1.0,
+      "elapsed_ms": 0.0031999989005271345
+    },
+    {
+      "id": "02-3",
+      "valid": true,
+      "correct": false,
+      "score": 0.0,
+      "expected_correct": false,
+      "expected_score": 0.0,
+      "elapsed_ms": 0.0017999991541728377
+    },
+    {
+      "id": "02-4",
+      "valid": true,
+      "correct": false,
+      "score": 0.0,
+      "expected_correct": false,
+      "expected_score": 0.0,
+      "elapsed_ms": 0.0017000020307023078
+    },
+    {
+      "id": "02-5",
+      "valid": true,
+      "correct": false,
+      "score": 0.0,
+      "expected_correct": false,
+      "expected_score": 0.0,
+      "elapsed_ms": 0.0013000026228837669
+    },
+    {
+      "id": "02-6",
+      "valid": true,
+      "correct": false,
+      "score": 0.0,
+      "expected_correct": false,
+      "expected_score": 0.5,
+      "elapsed_ms": 0.0016000012692529708
+    },
+    {
+      "id": "03-1",
+      "valid": true,
+      "correct": true,
+      "score": 1.0,
+      "expected_correct": true,
+      "expected_score": 1.0,
+      "elapsed_ms": 0.0013999997463542968
+    },
+    {
+      "id": "03-2",
+      "valid": true,
+      "correct": false,
+      "score": 0.0,
+      "expected_correct": true,
+      "expected_score": 1.0,
+      "elapsed_ms": 0.0012999989849049598
+    },
+    {
+      "id": "03-3",
+      "valid": true,
+      "correct": false,
+      "score": 0.0,
+      "expected_correct": false,
+      "expected_score": 0.0,
+      "elapsed_ms": 0.0012000018614344299
+    },
+    {
+      "id": "03-4",
+      "valid": true,
+      "correct": false,
+      "score": 0.0,
+      "expected_correct": false,
+      "expected_score": 0.0,
+      "elapsed_ms": 0.0011999982234556228
+    },
+    {
+      "id": "03-5",
+      "valid": true,
+      "correct": false,
+      "score": 0.0,
+      "expected_correct": false,
+      "expected_score": 0.0,
+      "elapsed_ms": 0.0012000018614344299
+    },
+    {
+      "id": "03-6",
+      "valid": true,
+      "correct": false,
+      "score": 0.0,
+      "expected_correct": false,
+      "expected_score": 0.5,
+      "elapsed_ms": 0.0012999989849049598
+    },
+    {
+      "id": "04-1",
+      "valid": true,
+      "correct": true,
+      "score": 1.0,
+      "expected_correct": true,
+      "expected_score": 1.0,
+      "elapsed_ms": 0.0013999997463542968
+    },
+    {
+      "id": "04-2",
+      "valid": true,
+      "correct": false,
+      "score": 0.0,
+      "expected_correct": true,
+      "expected_score": 1.0,
+      "elapsed_ms": 0.0012999989849049598
+    },
+    {
+      "id": "04-3",
+      "valid": true,
+      "correct": false,
+      "score": 0.0,
+      "expected_correct": false,
+      "expected_score": 0.0,
+      "elapsed_ms": 0.0011000010999850929
+    },
+    {
+      "id": "04-4",
+      "valid": true,
+      "correct": false,
+      "score": 0.0,
+      "expected_correct": false,
+      "expected_score": 0.0,
+      "elapsed_ms": 0.0012999989849049598
+    },
+    {
+      "id": "04-5",
+      "valid": true,
+      "correct": false,
+      "score": 0.0,
+      "expected_correct": false,
+      "expected_score": 0.0,
+      "elapsed_ms": 0.0011999982234556228
+    },
+    {
+      "id": "04-6",
+      "valid": true,
+      "correct": false,
+      "score": 0.0,
+      "expected_correct": false,
+      "expected_score": 0.5,
+      "elapsed_ms": 0.0011999982234556228
+    },
+    {
+      "id": "05-1",
+      "valid": true,
+      "correct": true,
+      "score": 1.0,
+      "expected_correct": true,
+      "expected_score": 1.0,
+      "elapsed_ms": 0.0012999989849049598
+    },
+    {
+      "id": "05-2",
+      "valid": true,
+      "correct": false,
+      "score": 0.0,
+      "expected_correct": true,
+      "expected_score": 1.0,
+      "elapsed_ms": 0.0012999989849049598
+    },
+    {
+      "id": "05-3",
+      "valid": true,
+      "correct": false,
+      "score": 0.0,
+      "expected_correct": false,
+      "expected_score": 0.0,
+      "elapsed_ms": 0.0012000018614344299
+    },
+    {
+      "id": "05-4",
+      "valid": true,
+      "correct": false,
+      "score": 0.0,
+      "expected_correct": false,
+      "expected_score": 0.0,
+      "elapsed_ms": 0.0012999989849049598
+    },
+    {
+      "id": "05-5",
+      "valid": true,
+      "correct": false,
+      "score": 0.0,
+      "expected_correct": false,
+      "expected_score": 0.0,
+      "elapsed_ms": 0.0012000018614344299
+    },
+    {
+      "id": "05-6",
+      "valid": true,
+      "correct": false,
+      "score": 0.0,
+      "expected_correct": false,
+      "expected_score": 0.5,
+      "elapsed_ms": 0.0012999989849049598
+    },
+    {
+      "id": "06-1",
+      "valid": true,
+      "correct": true,
+      "score": 1.0,
+      "expected_correct": true,
+      "expected_score": 1.0,
+      "elapsed_ms": 0.0011999982234556228
+    },
+    {
+      "id": "06-2",
+      "valid": true,
+      "correct": false,
+      "score": 0.0,
+      "expected_correct": true,
+      "expected_score": 1.0,
+      "elapsed_ms": 0.0013000026228837669
+    },
+    {
+      "id": "06-3",
+      "valid": true,
+      "correct": false,
+      "score": 0.0,
+      "expected_correct": false,
+      "expected_score": 0.0,
+      "elapsed_ms": 0.0011000010999850929
+    },
+    {
+      "id": "06-4",
+      "valid": true,
+      "correct": false,
+      "score": 0.0,
+      "expected_correct": false,
+      "expected_score": 0.0,
+      "elapsed_ms": 0.0015000005078036338
+    },
+    {
+      "id": "06-5",
+      "valid": true,
+      "correct": false,
+      "score": 0.0,
+      "expected_correct": false,
+      "expected_score": 0.0,
+      "elapsed_ms": 0.0012000018614344299
+    },
+    {
+      "id": "06-6",
+      "valid": true,
+      "correct": false,
+      "score": 0.0,
+      "expected_correct": false,
+      "expected_score": 0.5,
+      "elapsed_ms": 0.0010999974620062858
+    },
+    {
+      "id": "07-1",
+      "valid": true,
+      "correct": true,
+      "score": 1.0,
+      "expected_correct": true,
+      "expected_score": 1.0,
+      "elapsed_ms": 0.0012000018614344299
+    },
+    {
+      "id": "07-2",
+      "valid": true,
+      "correct": false,
+      "score": 0.0,
+      "expected_correct": true,
+      "expected_score": 1.0,
+      "elapsed_ms": 0.0011999982234556228
+    },
+    {
+      "id": "07-3",
+      "valid": true,
+      "correct": false,
+      "score": 0.0,
+      "expected_correct": false,
+      "expected_score": 0.0,
+      "elapsed_ms": 0.0012000018614344299
+    },
+    {
+      "id": "07-4",
+      "valid": true,
+      "correct": false,
+      "score": 0.0,
+      "expected_correct": false,
+      "expected_score": 0.0,
+      "elapsed_ms": 0.0011999982234556228
+    },
+    {
+      "id": "07-5",
+      "valid": true,
+      "correct": false,
+      "score": 0.0,
+      "expected_correct": false,
+      "expected_score": 0.0,
+      "elapsed_ms": 0.0011999982234556228
+    },
+    {
+      "id": "07-6",
+      "valid": true,
+      "correct": false,
+      "score": 0.0,
+      "expected_correct": false,
+      "expected_score": 0.5,
+      "elapsed_ms": 0.0013000026228837669
+    },
+    {
+      "id": "08-1",
+      "valid": true,
+      "correct": true,
+      "score": 1.0,
+      "expected_correct": true,
+      "expected_score": 1.0,
+      "elapsed_ms": 0.0010999974620062858
+    },
+    {
+      "id": "08-2",
+      "valid": true,
+      "correct": false,
+      "score": 0.0,
+      "expected_correct": true,
+      "expected_score": 1.0,
+      "elapsed_ms": 0.0012000018614344299
+    },
+    {
+      "id": "08-3",
+      "valid": true,
+      "correct": false,
+      "score": 0.0,
+      "expected_correct": false,
+      "expected_score": 0.0,
+      "elapsed_ms": 0.0010999974620062858
+    },
+    {
+      "id": "08-4",
+      "valid": true,
+      "correct": false,
+      "score": 0.0,
+      "expected_correct": false,
+      "expected_score": 0.0,
+      "elapsed_ms": 0.0013000026228837669
+    },
+    {
+      "id": "08-5",
+      "valid": true,
+      "correct": false,
+      "score": 0.0,
+      "expected_correct": false,
+      "expected_score": 0.0,
+      "elapsed_ms": 0.0011999982234556228
+    },
+    {
+      "id": "08-6",
+      "valid": true,
+      "correct": false,
+      "score": 0.0,
+      "expected_correct": false,
+      "expected_score": 0.5,
+      "elapsed_ms": 0.0012000018614344299
+    },
+    {
+      "id": "09-1",
+      "valid": true,
+      "correct": true,
+      "score": 1.0,
+      "expected_correct": true,
+      "expected_score": 1.0,
+      "elapsed_ms": 0.0012000018614344299
+    },
+    {
+      "id": "09-2",
+      "valid": true,
+      "correct": false,
+      "score": 0.0,
+      "expected_correct": true,
+      "expected_score": 1.0,
+      "elapsed_ms": 0.0011000010999850929
+    },
+    {
+      "id": "09-3",
+      "valid": true,
+      "correct": false,
+      "score": 0.0,
+      "expected_correct": false,
+      "expected_score": 0.0,
+      "elapsed_ms": 0.0010999974620062858
+    },
+    {
+      "id": "09-4",
+      "valid": true,
+      "correct": false,
+      "score": 0.0,
+      "expected_correct": false,
+      "expected_score": 0.0,
+      "elapsed_ms": 0.0012000018614344299
+    },
+    {
+      "id": "09-5",
+      "valid": true,
+      "correct": false,
+      "score": 0.0,
+      "expected_correct": false,
+      "expected_score": 0.0,
+      "elapsed_ms": 0.0012000018614344299
+    },
+    {
+      "id": "09-6",
+      "valid": true,
+      "correct": false,
+      "score": 0.0,
+      "expected_correct": false,
+      "expected_score": 0.5,
+      "elapsed_ms": 0.0010999974620062858
+    },
+    {
+      "id": "10-1",
+      "valid": true,
+      "correct": true,
+      "score": 1.0,
+      "expected_correct": true,
+      "expected_score": 1.0,
+      "elapsed_ms": 0.0013000026228837669
+    },
+    {
+      "id": "10-2",
+      "valid": true,
+      "correct": false,
+      "score": 0.0,
+      "expected_correct": true,
+      "expected_score": 1.0,
+      "elapsed_ms": 0.0011999982234556228
+    },
+    {
+      "id": "10-3",
+      "valid": true,
+      "correct": false,
+      "score": 0.0,
+      "expected_correct": false,
+      "expected_score": 0.0,
+      "elapsed_ms": 0.0011000010999850929
+    },
+    {
+      "id": "10-4",
+      "valid": true,
+      "correct": false,
+      "score": 0.0,
+      "expected_correct": false,
+      "expected_score": 0.0,
+      "elapsed_ms": 0.0012999989849049598
+    },
+    {
+      "id": "10-5",
+      "valid": true,
+      "correct": false,
+      "score": 0.0,
+      "expected_correct": false,
+      "expected_score": 0.0,
+      "elapsed_ms": 0.0011000010999850929
+    },
+    {
+      "id": "10-6",
+      "valid": true,
+      "correct": false,
+      "score": 0.0,
+      "expected_correct": false,
+      "expected_score": 0.5,
+      "elapsed_ms": 0.0012999989849049598
+    }
+  ],
+  "dataset_sha256": "89d3dade2e4478cc91bb5088c2db0f41ad1fecc9b1c09bc2e7c5d922a11ad4c5",
+  "created_at": "2026-09-08T07:24:16.850727+00:00"
+}

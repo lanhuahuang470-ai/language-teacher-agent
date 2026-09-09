@@ -1,0 +1,11 @@
+**
+!pyproject.toml
+!requirements.txt
+!src/
+!src/language_tutor/
+!src/language_tutor/**
+!src/graph/
+!src/graph/**
+**/__pycache__/
+**/*.pyc
+
