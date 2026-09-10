@@ -54,7 +54,7 @@ LangGraph 编排规划、教学、评估 Agent，结合 PostgreSQL 学生档案�
 & src/.venv/Scripts/python.exe -m evals.run --mode exact-match
 ```
 
-目前 58 项离线测试通过。覆盖状态路由、课程闭环、权限边界、事务回滚、幂等、索引重试、历史类型兼容及 Gradio 界面/API schema 构建。
+目前 86 项离线测试通过。覆盖状态路由、课程闭环、权限边界、事务回滚、幂等、索引重试、批量嵌入、历史类型兼容及 Gradio 界面/API schema 构建。
 
 显式运维和真实 API 命令：
 
@@ -70,15 +70,19 @@ LangGraph 编排规划、教学、评估 Agent，结合 PostgreSQL 学生档案�
 ## 容器演示
 
 ```powershell
-docker compose up --build
+docker compose up -d      # 启动 app + db 容器
+docker compose down       # 停止并移除容器
 ```
 
 配置使用独立的本地演示数据库卷，Web 端口只绑定到本机。
-Compose 配置已通过静态解析；本轮没有构建镜像或启动容器。
+镜像已构建并启动验证，Gradio 界面可正常交互（容器内独立数据库，不影响宿主机数据）。
+启动后浏览器打开 http://localhost:7860。
 
 ## 验证边界
 
-没有运行真实 DeepSeek/DashScope 评测、真实 PostgreSQL 并发/断连恢复测试或浏览器完整交互。
-精确匹配基线成绩不等于 Agent 准确率。种子数据尚待人工复核。
+真实模型评测已跑通：60 条种子题，准确率 90%，分数 MAE 0.177，延迟 P50 1058ms / P95 1414ms。
+详见 [验证总结报告](docs/verification-report/verification-report.html)。
+6 条判定错误种子题待人工复核；真实 PostgreSQL 并发/断连恢复测试尚未验证。
+精确匹配基线成绩不等于 Agent 准确率。
 检索采用 PostgreSQL 中的 JSON 向量与 Python 余弦排序，适合小规模个人错题；大规模数据再迁移 pgvector。
 

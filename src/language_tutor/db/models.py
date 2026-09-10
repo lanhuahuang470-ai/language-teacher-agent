@@ -1,13 +1,29 @@
-# ORM 表定义。MVP 阶段用 Base.metadata.create_all(engine) 建表，不上 Alembic
-from sqlalchemy import JSON, Column, DateTime, Float, ForeignKey, Integer, String, Text, func
+"""ORM table definitions; MVP uses ``Base.metadata.create_all``, not Alembic."""
+
+from __future__ import annotations
+
+from sqlalchemy import (
+    JSON,
+    Boolean,
+    Column,
+    DateTime,
+    Float,
+    ForeignKey,
+    Integer,
+    String,
+    Text,
+    func,
+)
 from sqlalchemy.orm import DeclarativeBase
 
 
 class Base(DeclarativeBase):
-    pass
+    """Declarative base for all ORM models."""
 
 
 class Student(Base):
+    """Student profile; ``id`` is the demo username, not an auth identity."""
+
     __tablename__ = "students"
 
     id = Column(String, primary_key=True)  # 直接用 Gradio 传来的用户名，MVP 不做注册体系
@@ -37,6 +53,7 @@ class Error(Base):
     error_sentence = Column(Text, nullable=False)  # 学生的原始错句
     correct_form = Column(Text, nullable=False)  # 正确形式
     error_types = Column(String, nullable=False)  # 逗号分隔，如 "时态,主谓一致"
+    resolved = Column(Boolean, nullable=False, default=False)  # 连续答对后标记为已解决
     created_at = Column(DateTime, server_default=func.now())
 
 
@@ -62,6 +79,8 @@ class ErrorEmbedding(Base):
 
 
 class SchemaMigration(Base):
+    """Tracks which additive migrations have been applied."""
+
     __tablename__ = "schema_migrations"
     version = Column(String, primary_key=True)
     applied_at = Column(DateTime, server_default=func.now())

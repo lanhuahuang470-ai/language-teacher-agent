@@ -9,15 +9,18 @@ from language_tutor import config
 
 @lru_cache(maxsize=1)
 def get_tutor_llm():
+    """Return a cached ChatOpenAI for teaching (temperature 0.7)."""
     return _client(0.7)
 
 
 @lru_cache(maxsize=1)
 def get_assessor_llm():
+    """Return a cached ChatOpenAI for assessment (temperature 0)."""
     return _client(0)
 
 
 def _client(temperature: float) -> ChatOpenAI:
+    """Create a ChatOpenAI bound to DeepSeek; raise if the API key is missing."""
     if not config.DEEPSEEK_API_KEY:
         raise ValueError("缺少 DEEPSEEK_API_KEY，请检查环境配置")
     return ChatOpenAI(

@@ -1,10 +1,12 @@
 """Validate model responses before they reach graph state or persistence."""
 
+from __future__ import annotations
+
 import json
 import logging
 from typing import TypeVar
 
-from pydantic import BaseModel, ConfigDict, Field, ValidationError, model_validator
+from pydantic import BaseModel, ConfigDict, Field, ValidationError, computed_field, model_validator
 
 from language_tutor.llm.json_utils import extract_json
 from language_tutor.telemetry import emit
@@ -18,6 +20,8 @@ class ResponseModel(BaseModel):
 
 
 class TeachingOutput(ResponseModel):
+    """Schema for tutor agent responses: reply text and exercise text."""
+
     model_config = ConfigDict(
         extra="ignore", str_strip_whitespace=True
     )  # Ignore harmless extra metadata; required fields remain validated.
@@ -29,22 +33,42 @@ class TeachingOutput(ResponseModel):
 
 class PlanningOutput(ResponseModel):
     plan: list[str] = Field(min_length=1, max_length=4)
+    focus: str = Field(default="mixed", description="review/mixed/new，表示本次重点")
     reason: str = ""
 
 
 class AssessmentOutput(ResponseModel):
-    is_correct: bool = Field(strict=True)
+    """Schema for assessment agent responses: grammar, spelling, score, and feedback.
+
+    评分分两层：
+    - grammar_correct：语法结构是否正确（决定课程推进和错题保存）
+    - spelling_correct：拼写是否正确（只影响反馈，不影响推进）
+    - is_correct（计算属性）：语法且拼写都正确，向后兼容
+    """
+
+    grammar_correct: bool = Field(strict=True)
+    spelling_correct: bool = Field(default=True, strict=True)
     score: float = Field(ge=0, le=1, allow_inf_nan=False, strict=True)
     error_types: list[str] = Field(default_factory=list)
     feedback_hint: str = Field(min_length=1)
     correct_answer: str = Field(min_length=1)
 
+    @computed_field  # type: ignore[misc]
+    @property
+    def is_correct(self) -> bool:
+        """语法和拼写都正确才算完全正确。"""
+        return self.grammar_correct and self.spelling_correct
+
     @model_validator(mode="after")
     def consistent_grade(self):
+        # 完全正确（语法+拼写）时 score 必须为 1
         if self.is_correct != (self.score == 1):
             raise ValueError("完全正确时 score 必须为 1，否则必须小于 1")
         if self.is_correct and self.error_types:
             raise ValueError("完全正确时 error_types 必须为空")
+        # 语法错误时 error_types 不能为空（拼写错误可以单独出现）
+        if not self.grammar_correct and not self.error_types:
+            raise ValueError("语法错误时 error_types 不能为空")
         return self
 
 
@@ -124,9 +148,41 @@ def invoke_validated(agent, messages: list, schema: type[Output], student_id: st
                 json.dumps(issues),
             )
             if attempt:
-                details = "; ".join(f"{item['field']}: {item['type']}" for item in issues)
+                # 翻译技术字段名为用户可读的中文说明
+                field_map = {
+                    "reply": "回复内容",
+                    "exercise": "题目",
+                    "grammar_correct": "语法判定",
+                    "spelling_correct": "拼写判定",
+                    "score": "评分",
+                    "is_correct": "判定结果",
+                    "correct_answer": "正确答案",
+                    "feedback_hint": "反馈要点",
+                    "error_types": "错误类型",
+                    "plan": "学习计划",
+                    "focus": "学习重点",
+                    "$": "整体格式",
+                }
+                type_map = {
+                    "missing": "缺失",
+                    "string_too_short": "内容为空",
+                    "string_too_long": "内容过长",
+                    "string_type": "类型错误",
+                    "value_error": "值不合法",
+                    "bool_parsing": "应为布尔值",
+                    "float_parsing": "应为数值",
+                    "list_type": "应为列表",
+                    "extra_forbidden": "包含多余字段",
+                    "invalid_json_or_message": "无法解析为 JSON",
+                }
+                parts = []
+                for item in issues:
+                    f = field_map.get(item["field"], item["field"])
+                    t = type_map.get(item["type"], item["type"])
+                    parts.append(f"{f}：{t}")
                 raise ModelOutputError(
-                    f"模型输出校验失败（{details}）。本轮未完成，请再次点击开始上课重试。"
+                    "AI 回复格式有误（" + "，".join(parts) + "），本轮未能完成。"
+                    "请直接重新发送上一次的答案或点击「开始上课」重试。"
                 ) from None
             # Show the actual invalid response and precise errors, not just the original task again.
             if raw:

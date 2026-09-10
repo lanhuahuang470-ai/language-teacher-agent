@@ -1,5 +1,7 @@
 """Structured operational events without student text, answers or credentials."""
 
+from __future__ import annotations
+
 import json
 import logging
 from contextlib import contextmanager
@@ -26,6 +28,8 @@ def request_trace():
 
 
 def traced(name: str):
+    """Decorator that emits ``node_completed`` / ``node_failed`` events around a function call."""
+
     def decorate(function):
         @wraps(function)
         def wrapper(*args, **kwargs):

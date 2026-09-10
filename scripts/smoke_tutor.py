@@ -12,7 +12,8 @@ def main():
         "current_kp": "be动词",
         "grade_result": GradeResult(
             exercise_id="test001",
-            is_correct=False,
+            grammar_correct=False,
+            spelling_correct=True,
             score=0.0,
             error_types=["主谓一致"],
             feedback_hint="be动词应改为was，主语是第三人称单数",

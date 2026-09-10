@@ -16,7 +16,7 @@ services:
     build: .
     env_file: src/.env
     environment:
-      DATABASE_URL: postgresql://tutor:local_demo_only@db:5432/tutor
+      DATABASE_URL: postgresql+psycopg://tutor:local_demo_only@db:5432/tutor
       TUTOR_HOST: 0.0.0.0
     ports:
       - "127.0.0.1:7860:7860"

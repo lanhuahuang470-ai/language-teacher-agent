@@ -5,6 +5,7 @@ import re
 
 
 def extract_json(raw: str) -> dict:
+    """Parse a JSON object from raw LLM output with code-block and brace-extraction fallbacks."""
     if not isinstance(raw, str):
         raise ValueError("模型输出必须是文本")
     # Accept literal newlines/tabs inside model-generated JSON strings without altering content.

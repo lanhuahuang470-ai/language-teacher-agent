@@ -1,5 +1,7 @@
 """Lazy database resources, closed by the application runtime."""
 
+from __future__ import annotations
+
 from functools import lru_cache
 
 from sqlalchemy import create_engine
@@ -21,10 +23,12 @@ def get_session_factory():
 
 
 def SessionLocal() -> Session:
+    """Return a new SQLAlchemy session; use as a context manager."""
     return get_session_factory()()
 
 
 def close_database() -> None:
+    """Dispose the engine and clear cached session factory / engine."""
     if get_engine.cache_info().currsize:
         get_engine().dispose()
     get_session_factory.cache_clear()

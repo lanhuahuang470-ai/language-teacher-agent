@@ -46,10 +46,9 @@ AGENT_SYSTEM_PROMPT = """你是一个友好、耐心的英语教学助手，面�
 - 每次回复都必须包含一个 exercise 题目，不允许为 null"""
 
 
-# 创建 ReAct Agent：LLM + 工具 + system prompt
-# ReAct = Reason + Act：LLM 先推理要不要调工具，再行动
 @lru_cache(maxsize=1)
 def get_tutor_agent():
+    """Return a cached ReAct tutor agent with the full tool set."""
     return create_react_agent(
         get_tutor_llm(),
         tools=ALL_TOOLS,

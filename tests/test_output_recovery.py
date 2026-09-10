@@ -41,7 +41,7 @@ def test_failure_reports_fields_without_logging_response(caplog):
     fake.invoke.return_value = {
         "messages": [AIMessage('{"reply":"private answer", "exercise":null}')]
     }
-    with caplog.at_level(logging.WARNING), pytest.raises(ModelOutputError, match="exercise"):
+    with caplog.at_level(logging.WARNING), pytest.raises(ModelOutputError, match="题目"):
         invoke_validated(fake, [("user", "teach")], TeachingOutput, "alice")
     assert "string_type" in caplog.text
     assert "private answer" not in caplog.text
@@ -73,7 +73,12 @@ def test_explicit_checkpoint_types_without_warning(monkeypatch, caplog, module, 
         Exercise(exercise_id="q", knowledge_point="be", question="He __ happy.")
         if kind is Exercise
         else GradeResult(
-            exercise_id="q", is_correct=True, score=1, error_types=[], feedback_hint="正确"
+            exercise_id="q",
+            grammar_correct=True,
+            spelling_correct=True,
+            score=1,
+            error_types=[],
+            feedback_hint="正确",
         )
     )
     serde = checkpoint_serializer()

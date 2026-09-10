@@ -21,6 +21,7 @@ def route_by_pending(state: TutorState) -> str:
 
 
 def build_graph(*, checkpointer):
+    """Compile the state graph with an explicit checkpointer."""
     g = StateGraph(TutorState)
     g.add_node("init_session", init_session.run)
     g.add_node("tutor", tutor.run)

@@ -1,5 +1,7 @@
 """Local Gradio demo. Student names are demo identities, not authentication."""
 
+from __future__ import annotations
+
 import json
 import logging
 from functools import lru_cache
@@ -10,6 +12,8 @@ from language_tutor import config
 from language_tutor.bootstrap import get_runtime
 from language_tutor.llm.outputs import ModelOutputError
 from language_tutor.telemetry import request_trace
+
+logger = logging.getLogger(__name__)
 
 EVENTS = {"回答": "answer", "提示": "hint", "解释": "explain", "跳过": "skip"}
 COMMANDS = {
@@ -31,6 +35,7 @@ def get_graph():
 def _invoke(
     message: str, student_id: str, event: str, expected_exercise_id=None, session_id="default"
 ) -> tuple[list[dict], str]:
+    """Invoke the graph with validated inputs and return (chat_history, exercise_id)."""
     student_id = student_id.strip()
     if not student_id or len(student_id) > 100:
         raise gr.Error("请输入 1～100 字符的学生 ID。")
@@ -46,7 +51,7 @@ def _invoke(
         if session_id == "default"
         else json.dumps([student_id, session_id], ensure_ascii=False)
     )
-    with request_trace():
+    with request_trace() as tid:
         try:
             result = get_graph().invoke(
                 {
@@ -60,6 +65,17 @@ def _invoke(
             )
         except ModelOutputError as exc:
             raise gr.Error(str(exc)) from None
+        except TimeoutError:
+            raise gr.Error(
+                f"AI 响应超时，请稍后重试。如果持续超时，请检查网络连接。（追踪号 {tid[:8]}）"
+            ) from None
+        except ConnectionError:
+            raise gr.Error("无法连接数据库或 AI 服务，请检查服务是否正常运行后重试。") from None
+        except Exception:
+            logger.exception("graph_invoke_failed trace_id=%s", tid)
+            raise gr.Error(
+                f"系统内部错误，本轮未能完成。请重试，如持续报错请记录追踪号 {tid[:8]} 联系排查。"
+            ) from None
     history = [
         {"role": "user" if msg.type == "human" else "assistant", "content": msg.content}
         for msg in result["messages"]
@@ -71,6 +87,7 @@ def _invoke(
 
 
 def start(student_id: str, session_id: str = "default"):
+    """Trigger the first graph turn for a new or resuming student session."""
     history, question_id = _invoke("开始上课", student_id, "start", session_id=session_id)
     return history, student_id.strip(), question_id, session_id.strip()
 
@@ -84,6 +101,7 @@ def respond(
     session_id="default",
     active_session="default",
 ):
+    """Handle a student's message: resolve the event, invoke the graph, and clear the input."""
     if (
         not active_student
         or student_id.strip() != active_student
@@ -150,6 +168,7 @@ def create_demo():
 
 
 def main():
+    """Configure logging and launch the Gradio demo."""
     logging.basicConfig(level=logging.INFO, format="%(message)s")
     create_demo().launch(server_name=config.TUTOR_HOST)
 

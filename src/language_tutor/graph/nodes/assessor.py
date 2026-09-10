@@ -12,6 +12,7 @@ from language_tutor.telemetry import traced
 
 @traced("assessor")
 def run(state: TutorState) -> dict:
+    """Grade the pending exercise, record the result, and clear ``pending_exercise``."""
     exercise = state["pending_exercise"]
     student_answer = state["messages"][-1].content
 

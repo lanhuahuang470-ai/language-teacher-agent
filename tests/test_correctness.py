@@ -4,7 +4,7 @@ from unittest.mock import MagicMock
 
 import pytest
 from langchain_core.embeddings import Embeddings
-from langchain_core.messages import AIMessage, HumanMessage
+from langchain_core.messages import AIMessage, HumanMessage, RemoveMessage
 from langgraph.checkpoint.memory import InMemorySaver
 from pydantic import ValidationError
 
@@ -29,7 +29,8 @@ def exercise():
 def grade(correct=True):
     return GradeResult(
         exercise_id="q1",
-        is_correct=correct,
+        grammar_correct=correct,
+        spelling_correct=correct,
         score=1.0 if correct else 0.0,
         error_types=[],
         feedback_hint="留意主谓一致",
@@ -140,6 +141,110 @@ def test_skip_does_not_advance_and_resets_streak(monkeypatch):
     assert result["pending_exercise"].exercise_id != "q1"
 
 
+def test_two_correct_resolves_errors_for_old_kp(monkeypatch):
+    resolve = MagicMock()
+    monkeypatch.setattr(tutor, "resolve_errors_by_kp", resolve)
+    replace_agent(
+        monkeypatch,
+        tutor,
+        "get_tutor_agent",
+        lambda *a, **k: agent_response(reply="继续。", exercise="She __ nice."),
+    )
+    # streak=1 + 答对 → advance 返回 streak=0（达到推进阈值）
+    tutor.run(state(pending_exercise=None, grade_result=grade(), correct_streak=1))
+    resolve.assert_called_once()
+    assert resolve.call_args.args[1] == "alice"
+    assert resolve.call_args.args[2] == "be动词"
+
+
+def test_wrong_answer_does_not_resolve_errors(monkeypatch):
+    resolve = MagicMock()
+    monkeypatch.setattr(tutor, "resolve_errors_by_kp", resolve)
+    replace_agent(
+        monkeypatch,
+        tutor,
+        "get_tutor_agent",
+        lambda *a, **k: agent_response(reply="再试。", exercise="He __ happy."),
+    )
+    # 答错 → streak=0 但 grade.is_correct=False
+    tutor.run(state(pending_exercise=None, grade_result=grade(False), correct_streak=1))
+    resolve.assert_not_called()
+
+
+def test_single_correct_does_not_resolve_errors(monkeypatch):
+    resolve = MagicMock()
+    monkeypatch.setattr(tutor, "resolve_errors_by_kp", resolve)
+    replace_agent(
+        monkeypatch,
+        tutor,
+        "get_tutor_agent",
+        lambda *a, **k: agent_response(reply="继续。", exercise="She __ nice."),
+    )
+    # streak=0 + 答对 → advance 返回 streak=1（未达到阈值）
+    tutor.run(state(pending_exercise=None, grade_result=grade(), correct_streak=0))
+    resolve.assert_not_called()
+
+
+def test_grammar_correct_spelling_wrong_still_advances(monkeypatch):
+    """语法对但拼写错 → 仍推进课程（拼写不影响推进），但不标记 resolved（不是完全正确）。"""
+    resolve = MagicMock()
+    monkeypatch.setattr(tutor, "resolve_errors_by_kp", resolve)
+    replace_agent(
+        monkeypatch,
+        tutor,
+        "get_tutor_agent",
+        lambda *a, **k: agent_response(reply="继续。", exercise="She __ nice."),
+    )
+    # 语法正确但拼写错误 → grammar_correct=True, is_correct=False（计算属性）
+    spelling_wrong = GradeResult(
+        exercise_id="q1",
+        grammar_correct=True,
+        spelling_correct=False,
+        score=0.8,
+        error_types=["拼写"],
+        feedback_hint="拼写有误",
+        correct_answer="He is happy.",
+    )
+    # streak=1 + 语法答对 → advance 返回 streak=0（推进）
+    tutor.run(state(pending_exercise=None, grade_result=spelling_wrong, correct_streak=1))
+    # 推进了 → resolve 被调用（grammar_correct=True 且 streak=0）
+    resolve.assert_called_once()
+    assert resolve.call_args.args[2] == "be动词"
+    # 但 is_correct=False（拼写还有错）
+    assert spelling_wrong.is_correct is False
+
+
+def test_trim_messages_removes_oldest_when_over_limit(monkeypatch):
+    from language_tutor import config
+    from language_tutor.graph.nodes.tutor import _trim_messages
+
+    # 模拟 5 条消息，上限设为 3
+    old_msgs = [HumanMessage(f"msg{i}", id=f"id{i}") for i in range(5)]
+    monkeypatch.setattr(config, "MAX_MESSAGES", 3)
+    # 新增 1 条 → 总数 6 → 超出 3 → 删最旧的 3 条
+    result = _trim_messages(
+        {"messages": old_msgs},
+        {"messages": [("assistant", "新回复")]},
+    )
+    # 返回的 messages 里应该包含 1 条新消息 + 3 条 RemoveMessage
+    removes = [m for m in result["messages"] if isinstance(m, RemoveMessage)]
+    assert len(removes) == 3
+    # 删除的是最旧的 3 条（id0, id1, id2）
+    removed_ids = {r.id for r in removes}
+    assert removed_ids == {"id0", "id1", "id2"}
+
+
+def test_trim_messages_no_op_when_under_limit(monkeypatch):
+    from language_tutor import config
+    from language_tutor.graph.nodes.tutor import _trim_messages
+
+    old_msgs = [HumanMessage("only one", id="x1")]
+    monkeypatch.setattr(config, "MAX_MESSAGES", 40)
+    result = _trim_messages({"messages": old_msgs}, {"messages": [("assistant", "hi")]})
+    removes = [m for m in result["messages"] if isinstance(m, RemoveMessage)]
+    assert len(removes) == 0
+
+
 def test_course_completion_clears_pending():
     result = tutor.run(
         state(
@@ -158,15 +263,17 @@ def test_course_completion_clears_pending():
         {"score": -0.1},
         {"score": float("nan")},
         {"score": "1"},
-        {"is_correct": "true"},
+        {"grammar_correct": "true"},
         {"correct_answer": ""},
-        {"is_correct": True, "score": 0.5},
-        {"is_correct": True, "error_types": ["时态"]},
+        {"grammar_correct": True, "spelling_correct": True, "score": 0.5},
+        {"grammar_correct": True, "spelling_correct": True, "error_types": ["时态"]},
+        {"grammar_correct": False, "error_types": []},
     ],
 )
 def test_invalid_assessment_is_rejected(changes):
     data = {
-        "is_correct": True,
+        "grammar_correct": True,
+        "spelling_correct": True,
         "score": 1.0,
         "error_types": [],
         "feedback_hint": "正确",
@@ -192,7 +299,7 @@ def test_json_braces_inside_strings(raw):
 def test_invalid_output_retries_once():
     fake = MagicMock()
     fake.invoke.return_value = agent_response(reply="")
-    with pytest.raises(ValueError, match="校验"):
+    with pytest.raises(ValueError, match="格式有误"):
         invoke_validated(fake, [("user", "teach")], TeachingOutput, "alice")
     assert fake.invoke.call_count == 2
 
@@ -202,7 +309,7 @@ def test_invalid_assessment_never_writes(monkeypatch):
         monkeypatch,
         assessor,
         "get_assessor_agent",
-        lambda *a, **k: agent_response(is_correct=True, score=9),
+        lambda *a, **k: agent_response(grammar_correct=True, score=9),
     )
     session = MagicMock()
     monkeypatch.setattr(assessor, "record_assessment", session)
@@ -217,7 +324,8 @@ def test_assessment_passes_correct_answer_to_transaction(monkeypatch):
         assessor,
         "get_assessor_agent",
         lambda *a, **k: agent_response(
-            is_correct=False,
+            grammar_correct=False,
+            spelling_correct=True,
             score=0.0,
             error_types=["语法"],
             feedback_hint="注意主谓一致",
@@ -238,7 +346,12 @@ def test_placement_does_not_write_mastery(monkeypatch):
         assessor,
         "get_assessor_agent",
         lambda *a, **k: agent_response(
-            is_correct=True, score=1.0, error_types=[], feedback_hint="正确", correct_answer="is"
+            grammar_correct=True,
+            spelling_correct=True,
+            score=1.0,
+            error_types=[],
+            feedback_hint="正确",
+            correct_answer="is",
         ),
     )
     session = MagicMock()
@@ -252,7 +365,7 @@ def test_placement_finishes_and_clears_scores(monkeypatch):
     monkeypatch.setattr(placement, "SessionLocal", MagicMock())
     update_level = MagicMock()
     monkeypatch.setattr(placement, "update_student_level", update_level)
-    result = placement.handle_placement(state(placement_scores=[1, 1, 1, 1, 0]))
+    result = placement.handle_placement(state(placement_scores=[1, 1, 1, 1, 0, 0, 0, 0, 0]))
     assert result["cefr_level"] == "B1"
     assert result["placement_mode"] is False
     assert result["placement_scores"] == []
@@ -334,6 +447,47 @@ def test_restarting_completed_course_resets_progress(monkeypatch):
     assert result["current_kp"] == "一般现在时"
 
 
+def test_auto_promotion_when_all_kps_mastered(monkeypatch):
+    monkeypatch.setattr(init_session, "SessionLocal", MagicMock())
+    monkeypatch.setattr(
+        init_session, "get_or_create_student", lambda *a: (SimpleNamespace(cefr_level="A1"), False)
+    )
+    # 所有 A1 知识点掌握度 >= 0.8 → 触发升级到 A2
+    a1_kps = init_session.CURRICULUM["A1"]
+    monkeypatch.setattr(init_session, "get_mastery_map", lambda *a: {kp: 0.9 for kp in a1_kps})
+    update_level = MagicMock()
+    monkeypatch.setattr(init_session, "update_student_level", update_level)
+    replace_agent(
+        monkeypatch,
+        init_session,
+        "get_planning_agent",
+        lambda *a, **k: agent_response(plan=["一般过去时", "现在进行时"], reason="upgrade"),
+    )
+    result = init_session.run({"student_id": "alice"})
+    assert result["cefr_level"] == "A2"
+    update_level.assert_called_once()
+
+
+def test_no_promotion_when_not_all_mastered(monkeypatch):
+    monkeypatch.setattr(init_session, "SessionLocal", MagicMock())
+    monkeypatch.setattr(
+        init_session, "get_or_create_student", lambda *a: (SimpleNamespace(cefr_level="A1"), False)
+    )
+    # 只有一个知识点达标 → 不升级
+    monkeypatch.setattr(init_session, "get_mastery_map", lambda *a: {"be动词": 0.9})
+    update_level = MagicMock()
+    monkeypatch.setattr(init_session, "update_student_level", update_level)
+    replace_agent(
+        monkeypatch,
+        init_session,
+        "get_planning_agent",
+        lambda *a, **k: agent_response(plan=["be动词"], reason="review"),
+    )
+    result = init_session.run({"student_id": "alice"})
+    assert result["cefr_level"] == "A1"
+    update_level.assert_not_called()
+
+
 def test_ui_blank_answer_and_changed_identity_are_rejected(monkeypatch):
     from language_tutor.ui import gradio_app as main
 
@@ -344,6 +498,39 @@ def test_ui_blank_answer_and_changed_identity_are_rejected(monkeypatch):
     with pytest.raises(Exception):
         main.respond("is", "bob", "alice", "回答")
     invoke.assert_not_called()
+
+
+def test_planning_tools_hide_identity_from_schema():
+    from language_tutor.agents.planning_agent import PLANNING_TOOLS
+
+    for tool in PLANNING_TOOLS:
+        properties = tool.tool_call_schema.model_json_schema().get("properties", {})
+        assert "student_id" not in properties
+        assert "config" not in properties
+
+
+def test_kp_dependencies_returns_correct_prereqs():
+    from language_tutor.agents.tools import get_kp_dependencies
+
+    result = get_kp_dependencies.invoke({"knowledge_point": "一般过去时"})
+    assert "一般现在时" in result
+
+
+def test_kp_dependencies_no_prereq():
+    from language_tutor.agents.tools import get_kp_dependencies
+
+    result = get_kp_dependencies.invoke({"knowledge_point": "人称代词"})
+    assert "无前置依赖" in result
+
+
+def test_planning_output_accepts_focus():
+    data = PlanningOutput.model_validate({"plan": ["be动词"], "focus": "review", "reason": "薄弱"})
+    assert data.focus == "review"
+
+
+def test_planning_output_defaults_focus_to_mixed():
+    data = PlanningOutput.model_validate({"plan": ["be动词"]})
+    assert data.focus == "mixed"
 
 
 def test_ui_command_is_an_event(monkeypatch):
@@ -410,7 +597,8 @@ def test_full_graph_completes_course_and_does_not_grade_help(monkeypatch):
         assessor,
         "get_assessor_agent",
         lambda *a, **k: agent_response(
-            is_correct=True,
+            grammar_correct=True,
+            spelling_correct=True,
             score=1.0,
             error_types=[],
             feedback_hint="回答正确",
@@ -458,6 +646,9 @@ def replace_agent(monkeypatch, module, name, call):
 def fake_persistence(monkeypatch):
     monkeypatch.setattr(assessor, "get_recorded_grade", lambda *args: None)
     monkeypatch.setattr(assessor, "record_assessment", lambda *args: args[-1])
+    # 答对两题后的错题删除使用 mock，避免测试依赖真实 PG
+    monkeypatch.setattr(tutor, "SessionLocal", MagicMock())
+    monkeypatch.setattr(tutor, "resolve_errors_by_kp", MagicMock())
 
 
 def test_assessor_reuses_committed_grade_without_calling_model(monkeypatch):

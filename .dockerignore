@@ -1,11 +1,27 @@
-**
-!pyproject.toml
-!requirements.txt
-!src/
-!src/language_tutor/
-!src/language_tutor/**
-!src/graph/
-!src/graph/**
+# 虚拟环境 — 体积大且平台相关，容器内自己装
+src/.venv/
+
+# 环境变量 — 不进镜像，通过 compose env_file 注入
+src/.env
+
+# Python 缓存
 **/__pycache__/
 **/*.pyc
 
+# 测试和评测 — 生产镜像不需要
+tests/
+evals/
+
+# Git 和文档
+.git/
+docs/
+*.md
+
+# IDE
+.vscode/
+.idea/
+
+# Docker 自身
+Dockerfile
+compose.yaml
+.dockerignore

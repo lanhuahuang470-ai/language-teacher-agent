@@ -21,4 +21,5 @@ class DashScopeEmbeddings(Embeddings):
         return [item.embedding for item in sorted(response.data, key=lambda item: item.index)]
 
     def embed_query(self, text: str) -> list[float]:
+        """Embed a single query string and return the first vector."""
         return self.embed_documents([text])[0]

@@ -11,8 +11,10 @@ Python + LangGraph + DeepSeek + PostgreSQL + Gradio，面向中文母语学习�
 3. **可靠性**：答题事务和幂等、持久化 embedding、重试任务、增量建表、旧 checkpoint 类型兼容。
 4. **求职展示基础**：种子评测集/基线/真实模型评测入口、日志、架构说明、演示路线、Docker/CI 配置。
 
-**验证结果：70 项离线测试通过；Ruff 检查和格式检查通过；本地可编辑安装、跨目录导入通过。**
-真实模型评测、真实 PostgreSQL 并发/故障恢复、Docker 镜像构建及浏览器实际交互尚未验证。
+**验证结果：86 项离线测试通过；Ruff 检查和格式检查通过；本地可编辑安装、跨目录导入通过。**
+真实模型评测已跑通（60 条种子题，准确率 90%，MAE 0.177，P50 1058ms）。
+Docker 镜像已构建并启动验证，Gradio 界面可正常交互（容器内独立数据库）。
+真实 PostgreSQL 并发/故障恢复尚未验证。
 不要把 SQLite 回归或种子基线成绩描述成生产验证或 Agent 模型准确率。
 
 ## 当前目录
@@ -24,7 +26,8 @@ requirements.txt               直接运行依赖精确版本
 requirements.lock              当前 Windows/Python 3.13 环境的依赖闭包
 requirements-dev.txt           pytest、Ruff、打包工具
 .env.example                   配置样例，不包含密钥
-Dockerfile / compose.yaml      本地容器演示配置，尚未构建运行
+Dockerfile / compose.yaml      本地容器演示配置，已构建运行
+.dockerignore                  排除 .venv/.env/__pycache__/tests/evals 进镜像
 .github/workflows/check.yml    离线 CI，尚未在远程执行
 docs/                          架构、评测、阶段记录和面试演示
 evals/                         60 条待人工复核样例、评测脚本、精确匹配基线报告
@@ -52,8 +55,8 @@ src/
       nodes/                  初始化、定级、教学、评估
     services/assessment.py    答题事务、已提交结果复用
     retrieval/
-      embeddings.py          DashScope 适配、超时与请求重试
-      error_store.py         持久化向量、SQL 学生过滤、余弦排序、任务重试
+      embeddings.py          DashScope 适配、批量嵌入 embed_documents
+      error_store.py         持久化向量、SQL 学生过滤、余弦排序、批量重试
     llm/                       惰性客户端、JSON 解析、输出模型及有限修复
     db/                        资源工厂、ORM、CRUD、版本化增量建表
 ```
@@ -92,11 +95,26 @@ src/
 Windows asyncio 所需本机 socketpair 在网络拦截前创建。
 真实 API 冒烟和 live 评测必须显式运行，不能混入默认测试。
 
+真实模型评测和冒烟测试（需 API key 和 PG 服务）：
+
+```powershell
+& src/.venv/Scripts/python.exe -m evals.run --mode live --output evals/results/live_baseline.json
+& src/.venv/Scripts/python.exe scripts/smoke_agent.py
+& src/.venv/Scripts/python.exe scripts/smoke_tutor.py
+```
+
+Docker 容器启动（项目根目录）：
+
+```powershell
+docker compose up -d      # 启动 app + db 容器
+docker compose down       # 停止并移除容器
+```
+
 ## 后续验收重点
 
 - 用独立测试数据库验证 PG 并发重复提交、断连恢复和真实 PostgresSaver 续接。
-- 人工复核种子题，运行真实模型评测并记录模型/提示词/数据版本；补充真实检索评测。
-- 实际构建容器、录制演示，再填写简历中的模型指标。
+- 人工复核种子题中 6 条判定错误（02-2/04-2/05-2/07-2/09-2/10-2），优化评分 prompt 收窄分差。
+- 录制演示视频，再填写简历中的模型指标。
 - 多进程部署前增加索引任务领取/租约与同会话并发控制；当前运行方式是单应用进程。
 
 

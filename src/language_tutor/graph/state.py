@@ -14,6 +14,8 @@ from language_tutor.domain.schemas import Exercise, GradeResult
 
 
 class TutorState(TypedDict, total=False):
+    """LangGraph shared state for the tutoring conversation."""
+
     # —— 会话身份与上下文 ——
     messages: Annotated[list, add_messages]  # 追加式，由 reducer 管理
     student_id: str  # 会话初始化时写入，整会话不变

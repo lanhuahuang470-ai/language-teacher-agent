@@ -16,6 +16,7 @@ def get_recorded_grade(student_id: str, exercise_id: str) -> GradeResult | None:
 
 
 def record_assessment(student_id, exercise, answer: str, grade: GradeResult) -> GradeResult:
+    """Persist mastery, error, and assessment in one transaction; idempotent on replay."""
     try:
         with SessionLocal() as session, session.begin():
             # Serializes mastery updates for one student on PostgreSQL.
@@ -27,7 +28,8 @@ def record_assessment(student_id, exercise, answer: str, grade: GradeResult) -> 
                 return GradeResult.model_validate(existing.grade)
             upsert_mastery(session, student_id, exercise.knowledge_point, grade.score, commit=False)
             error_id = None
-            if not grade.is_correct:
+            # 语法错误时保存错题；纯拼写错误不保存（不是知识点不会）
+            if not grade.grammar_correct:
                 error = save_error(
                     session,
                     student_id,

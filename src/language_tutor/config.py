@@ -24,7 +24,8 @@ DASHSCOPE_BASE_URL = os.getenv(
 EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "text-embedding-v3")
 
 
-def validate_runtime():
+def validate_runtime() -> None:
+    """Raise ``ValueError`` when a required key is missing or a limit is non-positive."""
     required = {
         "DEEPSEEK_API_KEY": DEEPSEEK_API_KEY,
         "DATABASE_URL": DATABASE_URL,
@@ -38,3 +39,16 @@ def validate_runtime():
 
 
 TUTOR_HOST = os.getenv("TUTOR_HOST", "127.0.0.1")
+TUTOR_PORT = int(os.getenv("TUTOR_PORT", "7860"))
+
+# —— 存储与内存控制 ——
+# state.messages 上限：超过后只保留最近 N 条（防 checkpoint blob 膨胀）
+# 40 条 ≈ 5 堂课，足够 LLM 看近期上下文（LLM 实际只读最近 8 条）
+MAX_MESSAGES = int(os.getenv("MAX_MESSAGES", "40"))
+# checkpoint 保留数量：每 thread 只保留最新 N 个（防 checkpoints 表膨胀）
+# 5 个 ≈ 1-2 轮对话的节点快照，满足正常恢复和基本回滚调试
+CHECKPOINT_KEEP = int(os.getenv("CHECKPOINT_KEEP", "5"))
+
+# 后台索引线程每次处理的待嵌入任务数
+# 5 条一次 API 调用，比逐条调用省 4 次网络往返
+EMBEDDING_BATCH_SIZE = int(os.getenv("EMBEDDING_BATCH_SIZE", "5"))

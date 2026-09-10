@@ -6,9 +6,10 @@ from langchain_core.runnables import RunnableConfig
 from langchain_core.tools import tool
 
 from language_tutor.agents.error_rag import search_similar_errors
+from language_tutor.db.crud import get_error_summary as _get_error_summary
 from language_tutor.db.crud import get_errors_by_kp, get_mastery_map
 from language_tutor.db.engine import SessionLocal
-from language_tutor.domain.curriculum import CURRICULUM
+from language_tutor.domain.curriculum import CURRICULUM, KP_DEPENDENCIES
 
 
 def _student_id(config: RunnableConfig) -> str:
@@ -18,6 +19,7 @@ def _student_id(config: RunnableConfig) -> str:
     return student_id
 
 
+# 知识掌握度
 @tool
 def get_mastery(knowledge_point: str, config: RunnableConfig) -> str:
     """查询学生对某个知识点的掌握度（0~1）。
@@ -31,6 +33,7 @@ def get_mastery(knowledge_point: str, config: RunnableConfig) -> str:
     return f"{knowledge_point} 的掌握度：{score:.2f}"
 
 
+# 知识薄弱点
 @tool
 def get_weak_points(config: RunnableConfig) -> str:
     """查询学生最薄弱的知识点（掌握度最低的 3 个）。
@@ -46,6 +49,7 @@ def get_weak_points(config: RunnableConfig) -> str:
     return f"最薄弱的知识点：{', '.join(weak)}"
 
 
+# 课程等级的知识点清单
 @tool
 def get_curriculum(cefr_level: str) -> str:
     """查询某个等级的课程知识点清单。
@@ -55,6 +59,7 @@ def get_curriculum(cefr_level: str) -> str:
     return f"{cefr_level} 课程：{', '.join(plan)}"
 
 
+# 最近五条错题
 @tool
 def get_error_history(knowledge_point: str, config: RunnableConfig) -> str:
     """查询学生在某个知识点上的历史错题（SQL 精确查询）。
@@ -72,6 +77,7 @@ def get_error_history(knowledge_point: str, config: RunnableConfig) -> str:
     return "\n".join(lines)
 
 
+# 相近错题
 @tool
 def get_similar_errors(student_sentence: str, config: RunnableConfig) -> str:
     """通过语义相似度检索历史错题（RAG 向量检索）。
@@ -90,5 +96,36 @@ def get_similar_errors(student_sentence: str, config: RunnableConfig) -> str:
     return "\n".join(lines)
 
 
-# 工具列表：传给 create_react_agent 的 tools 参数
+# 错题类型聚合统计（规划 Agent 专用）
+@tool
+def get_error_summary(config: RunnableConfig) -> str:
+    """聚合统计学生在每个知识点上的错题数量和错误类型（含已解决/未解决分类）。
+    返回示例：'一般过去时: 3条(未解决2/已解决1), 类型: 时态混淆/主谓一致; be动词: 1条(未解决1), 类型: 拼写'
+    用于规划 Agent 分析学生的典型错误模式，已解决的知识点可以跳过或快速过。"""
+    with SessionLocal() as session:
+        summary = _get_error_summary(session, _student_id(config))
+    if not summary:
+        return "暂无错题记录"
+    parts = []
+    for item in summary:
+        types = "/".join(item["error_types"]) if item["error_types"] else "无"
+        parts.append(
+            f"{item['knowledge_point']}: {item['count']}条"
+            f"(未解决{item['unresolved']}/已解决{item['resolved']}), 类型: {types}"
+        )
+    return "; ".join(parts)
+
+
+# 知识点前置依赖（规划 Agent 专用）
+@tool
+def get_kp_dependencies(knowledge_point: str) -> str:
+    """查询学习某知识点前应先掌握的前置知识点。
+    返回示例：'一般过去时的前置知识点：一般现在时' 或 '人称代词无前置依赖'。
+    用于规划 Agent 判断是否需要先复习前置知识点。"""
+    deps = KP_DEPENDENCIES.get(knowledge_point, [])
+    if not deps:
+        return f"{knowledge_point}无前置依赖，可以直接学习"
+    return f"{knowledge_point}的前置知识点：{', '.join(deps)}"
+
+
 ALL_TOOLS = [get_mastery, get_weak_points, get_curriculum, get_error_history, get_similar_errors]
