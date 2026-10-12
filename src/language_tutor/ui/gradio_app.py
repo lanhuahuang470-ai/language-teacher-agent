@@ -137,8 +137,6 @@ def create_demo():
             start,
             [student_id, session_id],
             [chatbot, active_student, expected_exercise, active_session],
-            concurrency_id="graph_turn",
-            concurrency_limit=1,
         )
         inputs = [
             msg,
@@ -154,16 +152,13 @@ def create_demo():
             respond,
             inputs,
             [msg, chatbot, expected_exercise],
-            concurrency_id="graph_turn",
-            concurrency_limit=1,
         )
         msg.submit(
             respond,
             inputs,
             [msg, chatbot, expected_exercise],
-            concurrency_id="graph_turn",
-            concurrency_limit=1,
         )
+    demo.queue()
     return demo
 
 

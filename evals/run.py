@@ -13,6 +13,11 @@ from pydantic import BaseModel, Field
 DEFAULT_DATA = Path(__file__).parent / "data" / "assessment_seed.json"
 
 
+class DatasetMeta(BaseModel):
+    human_reviewed: bool = False
+    case_count: int = 0
+
+
 class Case(BaseModel):
     id: str
     knowledge_point: str
@@ -23,15 +28,19 @@ class Case(BaseModel):
     expected_correct: bool
 
 
-def load_cases(path: Path) -> list[Case]:
+def load_cases(path: Path) -> tuple[list[Case], DatasetMeta]:
     data = json.loads(path.read_text(encoding="utf-8-sig"))
     cases = [Case.model_validate(item) for item in data["cases"]]
     if len({case.id for case in cases}) != len(cases):
         raise ValueError("Duplicate case IDs")
-    return cases
+    meta = DatasetMeta(
+        human_reviewed=data.get("human_reviewed", False),
+        case_count=len(cases),
+    )
+    return cases, meta
 
 
-def run(mode: str, cases: list[Case]) -> dict:
+def run(mode: str, cases: list[Case], *, dataset_meta: DatasetMeta | None = None) -> dict:
     agent = None
     prompt_hash = None
     if mode == "live":
@@ -98,9 +107,14 @@ def run(mode: str, cases: list[Case]) -> dict:
     latencies = sorted(row["elapsed_ms"] for row in results)
     from language_tutor import config
 
+    review_status = (
+        "human reviewed"
+        if (dataset_meta and dataset_meta.human_reviewed)
+        else "human review pending"
+    )
     return {
         "mode": mode,
-        "dataset_status": "synthetic seed; human review pending",
+        "dataset_status": f"synthetic seed; {review_status}",
         "scope": "isolated grading, no history retrieval",
         "model": config.LLM_MODEL if mode == "live" else None,
         "prompt_sha256": prompt_hash,
@@ -129,7 +143,8 @@ def main():
     parser.add_argument("--data", type=Path, default=DEFAULT_DATA)
     parser.add_argument("--output", type=Path, default=Path("evals/results/baseline.json"))
     args = parser.parse_args()
-    report = run(args.mode, load_cases(args.data))
+    cases, dataset_meta = load_cases(args.data)
+    report = run(args.mode, cases, dataset_meta=dataset_meta)
     report["dataset_sha256"] = hashlib.sha256(args.data.read_bytes()).hexdigest()
     report["created_at"] = datetime.now(timezone.utc).isoformat()
     args.output.parent.mkdir(parents=True, exist_ok=True)

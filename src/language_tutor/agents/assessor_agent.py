@@ -10,10 +10,8 @@ from functools import lru_cache
 # 不需要掌握度工具——评估只关心错题模式，不关心整体掌握度
 from langgraph.prebuilt import create_react_agent
 
-from language_tutor.agents.tools import get_error_history, get_similar_errors
 from language_tutor.llm.client import get_assessor_llm
-
-ASSESSMENT_TOOLS = [get_error_history, get_similar_errors]
+from language_tutor.mcp_client import get_assessment_tools
 
 ASSESSMENT_PROMPT = """你是一个严格、一致的英语答题评估器。
 
@@ -30,6 +28,14 @@ ASSESSMENT_PROMPT = """你是一个严格、一致的英语答题评估器。
 - 语法结构错误 → grammar_correct=false，error_types 必须包含语法错误类型
 - 语法和拼写都正确 → grammar_correct=true, spelling_correct=true, error_types=[], score=1.0
 - 完全正确时 score=1；有错误时 score<1
+
+**答案识别规则（非常重要）：**
+- 只要学生答案中**包含了正确的语法形式**，即使有多余的话（如"I think..."、"应该是..."、"我觉得..."等），也算语法正确
+  例：题目 He ___ happy. 学生答 "I think 'is' fits here." → 包含正确答案 is → grammar=true, score=1.0
+  例：题目 He ___ to school. 学生答 "应该是 went 吧" → 包含正确答案 went → grammar=true, score=1.0
+- 填空题只看空格处的语法形式是否正确，不要求学生写完整句子
+- 学生的思考过程、语气词、解释说明，只要不影响语法正确性，都不扣分
+- 多空题按正确空的比例给分（例：2空对1空 → 0.5分）
 
 你可以使用以下工具来了解学生的历史错题：
 - get_error_history：查该知识点的历史错题，看是否反复犯同类错误
@@ -51,9 +57,9 @@ correct_answer 必须独立给出本题正确答案，不能用反馈要点代�
 
 @lru_cache(maxsize=1)
 def get_assessor_agent():
-    """Return a cached ReAct assessor agent with error-history tools."""
+    tools = get_assessment_tools()
     return create_react_agent(
         get_assessor_llm(),
-        tools=ASSESSMENT_TOOLS,
+        tools=tools,
         prompt=ASSESSMENT_PROMPT,
     )

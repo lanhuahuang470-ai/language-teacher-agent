@@ -10,6 +10,51 @@
 - db：数据库资源、ORM、查询与增量建表。
 - bootstrap：持久化连接、索引线程及关闭过程。
 - ui：输入校验、学生/会话选择、展示和原题号提交。
+- mcp：MCP 服务层，包含教学工具 Server 和客户端封装。
+
+## MCP 工具服务层
+
+### 架构
+
+```mermaid
+flowchart LR
+    subgraph Agent层
+        PA[规划 Agent]
+        TA[教学 Agent]
+        AA[评估 Agent]
+    end
+
+    subgraph MCP客户端层
+        W[工具包装层<br/>隐藏 student_id<br/>LangChain Tool 适配]
+    end
+
+    subgraph MCP服务层
+        TS[教学工具 MCP Server<br/>7 个内部业务工具]
+    end
+
+    subgraph 外部依赖
+        DB[(PostgreSQL)]
+    end
+
+    PA --> W
+    TA --> W
+    AA --> W
+    W -->|stdio| TS
+    TS --> DB
+```
+
+### 设计说明
+
+- **MCP Server**：教学工具（内部业务解耦），掌握度、错题、课程查询统一走 MCP。
+- **工具权限隔离**：规划 Agent 4 个工具、教学 Agent 5 个工具、评估 Agent 2 个工具，各自只能看到权限内的子集。
+- **身份安全**：MCP 工具本身带 student_id 参数，但经过客户端包装层后，模型侧 schema 中不暴露 student_id，身份从 RunnableConfig 自动注入。
+- **可插拔**：`USE_MCP_TOOLS` 环境变量控制是否启用 MCP 工具路径，关闭时回退到本地 LangChain 工具（测试使用）。
+
+### 为什么用 MCP 而不是直接函数调用
+
+- 本项目规模下，MCP 是架构练习而非生产必需。
+- 价值在于：工具与 Agent 框架解耦、标准化协议、权限边界清晰、支持独立部署扩展。
+- 面试时应说明：这是有意识的架构取舍，知道何时该用何时不该用。
 
 ## 一轮答题
 
@@ -64,4 +109,4 @@ temperature=0 可以降低随机性，但不是评分完全确定的保证。
 - graph.state.Exercise / GradeResult 路径保留再导出，旧类型序列化兼容有离线测试。
 - 本轮没有连接并改写实际 checkpoint；真实 PG 续接仍需独立验证。
 - 旧错题 correct_form 可能含反馈要点，不自动猜测并改写历史答案。
-
+- MCP 工具路径可通过 `USE_MCP_TOOLS=false` 关闭，回退到本地 LangChain 工具。

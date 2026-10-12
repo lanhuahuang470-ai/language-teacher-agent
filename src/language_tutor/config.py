@@ -52,3 +52,8 @@ CHECKPOINT_KEEP = int(os.getenv("CHECKPOINT_KEEP", "5"))
 # 后台索引线程每次处理的待嵌入任务数
 # 5 条一次 API 调用，比逐条调用省 4 次网络往返
 EMBEDDING_BATCH_SIZE = int(os.getenv("EMBEDDING_BATCH_SIZE", "5"))
+
+# —— MCP 工具服务 ——
+# 是否通过 MCP Server 加载工具（true=走 MCP，false=直接用本地 LangChain 工具）
+# 测试环境关闭，因为 MCP 子进程拿不到测试用的 SQLite 内存数据库
+USE_MCP_TOOLS = os.getenv("USE_MCP_TOOLS", "true").lower() in ("1", "true", "yes")

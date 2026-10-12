@@ -4,6 +4,10 @@
   教学 Agent 负责"怎么教"（讲解+出题+反馈）
   规划 Agent 负责"教什么"（知识点选择+顺序+复习 vs 新学）
 
+工具来源：
+- 默认从 MCP Server 加载（USE_MCP_TOOLS=true）
+- 测试/离线环境 fallback 到本地 LangChain 工具
+
 专属工具：get_weak_points / get_curriculum / get_error_summary / get_kp_dependencies
 不直接看具体错句内容——规划只看聚合统计，不关心个别错句。
 """
@@ -14,6 +18,7 @@ from functools import lru_cache
 
 from langgraph.prebuilt import create_react_agent
 
+from language_tutor import config
 from language_tutor.agents.tools import (
     get_curriculum,
     get_error_summary,
@@ -21,8 +26,6 @@ from language_tutor.agents.tools import (
     get_weak_points,
 )
 from language_tutor.llm.client import get_assessor_llm  # 规划用低温度，要稳定
-
-PLANNING_TOOLS = [get_weak_points, get_curriculum, get_error_summary, get_kp_dependencies]
 
 PLANNING_PROMPT = """你是一个英语学习路径规划师，负责为学生制定个性化学习计划。
 
@@ -55,11 +58,32 @@ focus 字段说明：
 - "new"：全部是新知识点（学生当前等级已掌握较好的前提下）"""
 
 
+def _get_local_planning_tools():
+    """本地 LangChain 工具（测试 fallback）。"""
+    return [get_weak_points, get_curriculum, get_error_summary, get_kp_dependencies]
+
+
+# 兼容旧引用（测试用）：本地工具列表，工具 schema 不暴露 student_id
+PLANNING_TOOLS = _get_local_planning_tools()
+
+
 @lru_cache(maxsize=1)
 def get_planning_agent():
-    """Return a cached ReAct planning agent with analysis tools."""
+    """Return a cached ReAct planning agent with analysis tools.
+
+    工具来源：
+    - USE_MCP_TOOLS=true 时从 MCP Server 加载
+    - 否则使用本地 LangChain 工具（测试/离线环境）
+    """
+    if config.USE_MCP_TOOLS:
+        from language_tutor.mcp_client import get_planning_tools
+
+        tools = get_planning_tools()
+    else:
+        tools = _get_local_planning_tools()
+
     return create_react_agent(
         get_assessor_llm(),
-        tools=PLANNING_TOOLS,
+        tools=tools,
         prompt=PLANNING_PROMPT,
     )

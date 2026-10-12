@@ -13,6 +13,7 @@ os.environ.update(
         "DATABASE_URL": "sqlite://",
         "DEEPSEEK_API_KEY": "offline-test-key",
         "DASHSCOPE_API_KEY": "offline-test-key",
+        "USE_MCP_TOOLS": "false",  # 测试用本地工具，MCP 子进程拿不到 SQLite 内存库
     }
 )
 

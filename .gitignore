@@ -13,3 +13,7 @@ dist/
 *.log
 .vscode/
 .idea/
+
+# 本地工具 / Agent 工作产物，不纳入版本控制
+.trae-html-share-packages/
+.workbuddy/

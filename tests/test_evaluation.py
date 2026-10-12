@@ -5,12 +5,13 @@ from language_tutor.telemetry import request_trace, traced
 
 
 def test_seed_baseline_is_labeled_and_contains_partial_credit_cases():
-    cases = load_cases(DEFAULT_DATA)
-    assert len(cases) == 60
+    cases, meta = load_cases(DEFAULT_DATA)
+    assert len(cases) >= 60
+    assert meta.human_reviewed is True
     assert any(case.expected_score == 0.5 for case in cases)
-    report = run("exact-match", cases)
+    report = run("exact-match", cases, dataset_meta=meta)
     assert report["model"] is None
-    assert "human review pending" in report["dataset_status"]
+    assert "human reviewed" in report["dataset_status"]
     assert report["correctness_accuracy"] < 1
     assert report["score_mae_valid_only"] > 0
 

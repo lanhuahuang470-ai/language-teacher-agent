@@ -2,18 +2,21 @@
 
 ## 项目目标与当前状态
 
-Python + LangGraph + DeepSeek + PostgreSQL + Gradio，面向中文母语学习者。
-重点展示教学流程、工具权限边界、持久化恢复和可复现评测，而不是单纯增加 Agent 数量。
+Python + LangGraph + MCP + DeepSeek + PostgreSQL + Gradio，面向中文母语学习者。
+重点展示多 Agent 架构、MCP 工具服务化、事务一致性、持久化恢复和可复现评测，而不是单纯增加 Agent 数量。
 
-本轮按以下顺序落地：
+已完成阶段：
 1. **正确性**：学生隔离、结构化事件、课程推进、上下文、正确答案、输出校验。
 2. **工程整理**：标准 Python 包、惰性工厂、运行资源管理、依赖版本记录、脚本/测试分离、Ruff。
 3. **可靠性**：答题事务和幂等、持久化 embedding、重试任务、增量建表、旧 checkpoint 类型兼容。
-4. **求职展示基础**：种子评测集/基线/真实模型评测入口、日志、架构说明、演示路线、Docker/CI 配置。
+4. **求职展示基础**：种子评测集/基线/真实模型评测、日志、架构说明、Docker/CI 配置。
+5. **MCP 工具服务化**：教学工具 MCP Server（7 个内部工具），Agent 编排与业务工具解耦。
+6. **评测优化**：94 道人工复核种子题，评分准确率 97.9%，MAE 0.052。
 
 **验证结果：86 项离线测试通过；Ruff 检查和格式检查通过；本地可编辑安装、跨目录导入通过。**
-真实模型评测已跑通（60 条种子题，准确率 90%，MAE 0.177，P50 1058ms）。
+真实模型评测已跑通（94 道种子题，准确率 97.9%，MAE 0.052，P50 807ms）。
 Docker 镜像已构建并启动验证，Gradio 界面可正常交互（容器内独立数据库）。
+GitHub Actions CI 已通过（ubuntu-latest）。
 真实 PostgreSQL 并发/故障恢复尚未验证。
 不要把 SQLite 回归或种子基线成绩描述成生产验证或 Agent 模型准确率。
 
@@ -28,9 +31,9 @@ requirements-dev.txt           pytest、Ruff、打包工具
 .env.example                   配置样例，不包含密钥
 Dockerfile / compose.yaml      本地容器演示配置，已构建运行
 .dockerignore                  排除 .venv/.env/__pycache__/tests/evals 进镜像
-.github/workflows/check.yml    离线 CI，尚未在远程执行
+.github/workflows/check.yml    离线 CI，已在 GitHub Actions 通过（ubuntu-latest）
 docs/                          架构、评测、阶段记录和面试演示
-evals/                         60 条待人工复核样例、评测脚本、精确匹配基线报告
+evals/                         94 道人工复核样例、评测脚本、精确匹配基线报告
 scripts/                       migrate、retry_index、smoke_agent、smoke_tutor、check_pgvector
 tests/                         正确性、事务/检索/迁移、评测/日志测试
 src/
@@ -40,15 +43,19 @@ src/
   graph/state.py               兼容旧 checkpoint 的 graph.state 类型路径
   language_tutor/
     __main__.py                python -m language_tutor
-    config.py                  集中读取配置，支持 LANGUAGE_TUTOR_ENV_FILE
+    config.py                  集中读取配置，支持 LANGUAGE_TUTOR_ENV_FILE / USE_MCP_TOOLS
     bootstrap.py               增量建表、PostgresSaver、索引线程、连接释放
     telemetry.py               trace_id、节点耗时、异常类型
+    mcp_server.py              教学工具 MCP Server（7 个内部工具）
+    mcp_client.py              MCP 客户端封装 + 工具包装（隐藏 student_id）
+    mcp/
+      __init__.py
     ui/gradio_app.py           界面、事件、学生/会话绑定、提交题号
     domain/
       schemas.py              Exercise、GradeResult
       curriculum.py           A1/A2/B1 课程
       learning_policy.py      连续答对推进、过期题号检查
-    agents/                    三个 Agent 工厂、只读工具
+    agents/                    三个 Agent 工厂、本地工具（MCP 关闭时的 fallback）
     graph/
       state.py                TutorState 与历史类型再导出
       builder.py              显式注入 checkpointer
@@ -60,6 +67,32 @@ src/
     llm/                       惰性客户端、JSON 解析、输出模型及有限修复
     db/                        资源工厂、ORM、CRUD、版本化增量建表
 ```
+
+## MCP 架构
+
+### MCP Server
+
+| Server | 类型 | 工具数 | 调用方 | 用途 |
+|--------|------|--------|--------|------|
+| 教学工具 MCP | 内部业务 | 7 | 三个 Agent | 掌握度、错题、课程查询 |
+
+### 工具权限隔离
+
+- Planning Agent：get_weak_points / get_curriculum / get_error_summary / get_kp_dependencies（4 个）
+- Teaching Agent：get_mastery / get_weak_points / get_curriculum / get_error_history / get_similar_errors（5 个）
+- Assessment Agent：get_error_history / get_similar_errors（2 个）
+
+### 身份安全
+
+- MCP 工具本身带 student_id 参数
+- 客户端包装层从输入 schema 中移除 student_id 字段
+- 调用时从 RunnableConfig 取出 student_id 自动注入
+- 模型侧看不到也无法伪造学生身份
+
+### 可插拔设计
+
+- `USE_MCP_TOOLS=true`（默认）：Agent 走 MCP 工具路径
+- `USE_MCP_TOOLS=false`：回退到本地 LangChain 工具（测试使用）
 
 ## 设计约束
 
@@ -92,15 +125,23 @@ src/
 ```
 
 测试使用假模型、假 embedding 和 SQLite/内存 checkpoint，不读取真实 .env，不允许外部网络。
+测试环境 USE_MCP_TOOLS=false，走本地工具路径，保证 monkeypatch 生效。
 Windows asyncio 所需本机 socketpair 在网络拦截前创建。
 真实 API 冒烟和 live 评测必须显式运行，不能混入默认测试。
 
 真实模型评测和冒烟测试（需 API key 和 PG 服务）：
 
 ```powershell
-& src/.venv/Scripts/python.exe -m evals.run --mode live --output evals/results/live_baseline.json
+& src/.venv/Scripts/python.exe -m evals.run --mode live --output evals/results/live_v2.json
 & src/.venv/Scripts/python.exe scripts/smoke_agent.py
 & src/.venv/Scripts/python.exe scripts/smoke_tutor.py
+```
+
+MCP Server 单独验证：
+
+```powershell
+# 教学工具 MCP
+& src/.venv/Scripts/python.exe -c "from mcp.server.fastmcp import FastMCP; from language_tutor.mcp_server import mcp; print('OK')"
 ```
 
 Docker 容器启动（项目根目录）：
@@ -110,20 +151,19 @@ docker compose up -d      # 启动 app + db 容器
 docker compose down       # 停止并移除容器
 ```
 
+## 评测数据
+
+- 94 道种子题（human_reviewed=true），10 个知识点，13 种题型
+- 题型：标准填空、啰嗦但正确（英/中）、完全错误、提示词注入、答非所问、部分正确（多空）、拼写错误、大小写/空格、句子判断、词汇选择、拒绝回答、易混淆错误、翻译填空
+- 真实模型（deepseek-chat）评测结果：准确率 97.9%，MAE 0.052，P50 807ms，有效输出率 100%
+- 优化过程：v1 基线 90% → v2 答案识别规则优化 97.9%（解决 6 道假阴性）
+- 遗留偏差：2 道边界题型（句子判断开放式、词汇选择）
+
 ## 后续验收重点
 
 - 用独立测试数据库验证 PG 并发重复提交、断连恢复和真实 PostgresSaver 续接。
-- 人工复核种子题中 6 条判定错误（02-2/04-2/05-2/07-2/09-2/10-2），优化评分 prompt 收窄分差。
-- 录制演示视频，再填写简历中的模型指标。
+- 录制演示视频，展示完整教学流程（定级→教学→答题→评分）。
+- 端到端评测：有 RAG vs 无 RAG 的错题复发率对比。
+- 多 Agent 对比实验：单次模型调用 vs 固定工具流程 vs 三 Agent ReAct 的质量/耗时/token 对比。
 - 多进程部署前增加索引任务领取/租约与同会话并发控制；当前运行方式是单应用进程。
-
-
-## 教学输出报错修复
-
-- 原日志仅记录 TeachingOutput 校验失败，不能据此推断具体字段；不记录用户答案正文。
-- 首轮提供合法 JSON Schema；有限重试带上上一条无效输出与字段/错误类型，不能只重复原任务。
-- 教学可忽略无关元数据，但 reply/exercise 仍要求非空字符串；不放宽评分校验。
-- JSON 字符串中的原始换行可解析；多内容块提取文本。
-- ModelOutputError 在界面转换为可读错误；日志只记录字段名和错误类型。
-- checkpoint_serializer 显式登记新旧 Exercise/GradeResult 类型，不使用全局反序列化放行。
-- 本次新增 12 项离线回归；未调用真实 API 复现原回复。
+- pgvector 迁移（可选）：目前 JSON 向量够用，规模增长后再考虑。

@@ -1,5 +1,3 @@
-from functools import lru_cache
-
 # 教学 Agent：用 create_react_agent 构建的 tool-calling agent
 #
 # 与之前 tutor.py 的区别：
@@ -8,8 +6,17 @@ from functools import lru_cache
 #
 # DeepSeek 支持 function calling（OpenAI tool calling 协议），
 # 所以 create_react_agent 可以正常工作
+#
+# 工具来源：
+# - 默认从 MCP Server 加载（USE_MCP_TOOLS=true）
+# - 测试/离线环境 fallback 到本地 LangChain 工具
+from __future__ import annotations
+
+from functools import lru_cache
+
 from langgraph.prebuilt import create_react_agent
 
+from language_tutor import config
 from language_tutor.agents.tools import ALL_TOOLS
 from language_tutor.llm.client import get_tutor_llm
 
@@ -46,11 +53,28 @@ AGENT_SYSTEM_PROMPT = """你是一个友好、耐心的英语教学助手，面�
 - 每次回复都必须包含一个 exercise 题目，不允许为 null"""
 
 
+def _get_local_teaching_tools():
+    """本地 LangChain 工具（测试 fallback）。"""
+    return ALL_TOOLS
+
+
 @lru_cache(maxsize=1)
 def get_tutor_agent():
-    """Return a cached ReAct tutor agent with the full tool set."""
+    """Return a cached ReAct tutor agent with the full tool set.
+
+    工具来源：
+    - USE_MCP_TOOLS=true 时从 MCP Server 加载
+    - 否则使用本地 LangChain 工具（测试/离线环境）
+    """
+    if config.USE_MCP_TOOLS:
+        from language_tutor.mcp_client import get_teaching_tools
+
+        tools = get_teaching_tools()
+    else:
+        tools = _get_local_teaching_tools()
+
     return create_react_agent(
         get_tutor_llm(),
-        tools=ALL_TOOLS,
+        tools=tools,
         prompt=AGENT_SYSTEM_PROMPT,
     )
